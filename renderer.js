@@ -23,22 +23,55 @@ engine.constraintIterations = 1
 engine.positionIterations = 1
 engine.velocityIterations = 1
 
-const worldWidth  = document.documentElement.clientWidth
-const worldHeight = document.documentElement.clientHeight
+const w  = document.documentElement.clientWidth
+const h = document.documentElement.clientHeight
+
+const canvas = document.getElementById("blackboard")
 
 // create renderer
-var render = Render.create({
+const render = Render.create({
   element: document.body,
   engine: engine,
-  //canvas: canvas,
+  canvas: canvas,
   options: {
-    width: worldWidth,
-    height: worldHeight,
+    width: w,
+    height: h,
     //showAngleIndicator: true,
     wireframes: false,
     background: '#000000',
-    pixelRatio: 'auto'
+    //pixelRatio: 'auto',
+    pixelRatio: 1,
+    hasBounds: true
   }
+});
+
+
+const walls = new Walls(world, 100)
+
+window.addEventListener('resize', () => { 
+  //Matter.Render.setPixelRatio(render, pixelRatio)
+  const w = window.innerWidth
+  const h = window.innerHeight
+
+  render.bounds.max.x = w
+  render.bounds.max.y = h
+
+  render.options.width = w
+  render.options.height = h
+
+  render.canvas.width = w
+  render.canvas.height = h
+
+  walls.update(w, h)
+
+  //render.canvas.setAttribute('width', w)
+  //render.canvas.setAttribute('height', h)
+
+  //Render.lookAt(render, {
+  //  min: { x: 0, y: 0 },
+  //  max: { x: w, y: h }
+  //});
+
 });
 
 Render.run(render);
@@ -46,16 +79,6 @@ Render.run(render);
 // create runner
 var runner = Runner.create();
 Runner.run(runner, engine);
-
-// add bodies
-const wallStyle = { fillStyle: '#222' };
-const wallThickness = 50;
-Composite.add(world, [
-  Bodies.rectangle(worldWidth/2,             0,    worldWidth, wallThickness, { isStatic: true, render: wallStyle }),
-  Bodies.rectangle(worldWidth/2,   worldHeight,    worldWidth, wallThickness, { isStatic: true, render: wallStyle }),
-  Bodies.rectangle(  worldWidth, worldHeight/2, wallThickness,   worldHeight, { isStatic: true, render: wallStyle }),
-  Bodies.rectangle(           0, worldHeight/2, wallThickness,   worldHeight, { isStatic: true, render: wallStyle })
-]);
 
 // create a body with an attractor
 world.gravity.scale = 0.0;
@@ -109,7 +132,7 @@ var explosion = function(engine) {
     const dy = body.position.y - aby;
     const invl = 1.0 / (dx * dx + dy * dy) ** 0.5;
 
-    const forceMagnitude = 1.0e-1 * Common.random() * body.mass ;
+    const forceMagnitude = 2.0e-1 * Common.random() * body.mass ;
 
     Body.applyForce(body, body.position, {
       x: forceMagnitude * dx * invl, 
@@ -160,8 +183,7 @@ const circleStack = function(numx, numy, cx, cy, minRadius, maxRadius) {
   })
 }
 
-Composite.add(world, circleStack(30, 30, worldWidth/2, worldHeight/2, 1, 15));
-//Composite.add(world, circleStack(10, 10, worldWidth/2, worldHeight/2, 1,  8));
+Composite.add(world, circleStack(30, 30, w/2, h/2, 1, 15));
 
 // add mouse control
 var mouse = Mouse.create(render.canvas);
@@ -176,22 +198,43 @@ Events.on(engine, 'afterUpdate', function() {
 	});
 });
 
-//looks for key presses and logs them
-document.body.addEventListener("keydown", function(e) {
-  //if (e.code == "KeyA") {
-  //  Composite.add(world, circleStack(10, 10, worldWidth/2, worldHeight/2, 1,  8));
-    console.log(`keydown: ${e.code}`);
-  //}
-});
-document.body.addEventListener("keyup", function(e) {
-  if (e.code == "KeyA") {
-    Composite.add(world, circleStack(1, 10, worldWidth/2, worldHeight/2, 1,  8));
-  }
-  console.log(`keyup: ${e.code}`);
-});
+class Walls {
+  constructor(world, th, w = window.innerWidth, h = window.innerHeight) {
+    this.thickness = th
 
-// fit the render viewport to the scene
-Render.lookAt(render, {
-  min: { x: 0, y: 0 },
-  max: { x: worldWidth, y: worldHeight }
-});
+    this.shiftX = this.thickness / 2 + 2000
+    this.world = world
+
+    const baseW = w + this.shiftX*2 + this.thickness
+    this.base  = Bodies.rectangle(            w/2, h + this.thickness/2,          baseW, this.thickness, { isStatic: true })
+    this.left  = Bodies.rectangle(0 - this.shiftX,                  h/2, this.thickness,              h, { isStatic: true })
+    this.right = Bodies.rectangle(w + this.shiftX,                  h/2, this.thickness,              h, { isStatic: true })
+
+    World.add(this.world, this.array())
+  }
+
+  array() {
+    return [this.base, this.left, this.right]
+  }
+
+  update(w = window.innerWidth, h = window.innerHeight) {
+    const baseW = w + this.shiftX*2 + this.thickness
+    Matter.Body.setPosition(this.base, {x: w/2, y: h + this.thickness/2}) 
+    Matter.Body.setVertices(this.base, Matter.Vertices.fromPath(
+      'L 0 0 L ' + baseW + ' 0 L ' + baseW + ' ' + this.thickness + ' L 0 ' + this.thickness 
+    ))
+
+    Matter.Body.setPosition(this.left, {x: 0 - this.shiftX, y: h/2}) 
+    Matter.Body.setVertices(this.left, Matter.Vertices.fromPath(
+      'L 0 0 L ' + this.thickness + ' 0 L ' + this.thickness + ' ' + h + ' L 0 ' + h 
+    ))
+
+    Matter.Body.setPosition(this.right, {x: w + this.shiftX, y: h/2}) 
+    Matter.Body.setVertices(this.right, Matter.Vertices.fromPath(
+      'L 0 0 L ' + this.thickness + ' 0 L ' + this.thickness + ' ' + h + ' L 0 ' + h 
+    ))
+  }
+
+}
+
+
