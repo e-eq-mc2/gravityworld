@@ -106,7 +106,7 @@ var attractiveBody = Bodies.circle(
 
 World.add(world, attractiveBody);
 
-var attraction = function(engine) {
+function attraction(engine) {
   var bodies = Composite.allBodies(engine.world);
 
   for (var i = 0; i < bodies.length; i++) {
@@ -117,7 +117,7 @@ var attraction = function(engine) {
   }
 };
 
-var explosion = function(engine) {
+function explosion(engine) {
   var bodies = Composite.allBodies(engine.world);
 
   const abx = attractiveBody.position.x;
@@ -153,7 +153,7 @@ Events.on(engine, 'afterUpdate', function(event) {
 
   //console.log(`counter: ${counter} timeScale: ${engine.timing.timeScale} timeScaleTarget: ${timeScaleTarget}`);
   // every 1.5 sec
-  if (counter >= 60 * 3) {
+  if (counter >= 60 * 6) {
 
     // flip the timescale
     if (timeScaleTarget < timeScaleTargetMax) {
@@ -236,5 +236,3 @@ class Walls {
   }
 
 }
-
-
